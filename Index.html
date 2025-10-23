@@ -1,1 +1,2660 @@
+import React, { useState, useMemo } from 'react';
+import {
+    CheckCircle,
+    Circle,
+    ChevronDown,
+    ChevronRight,
+    Plus,
+    ArrowRight,
+    Download,
+    Upload,
+    Pencil,
+    Trash2,
+    Copy,
+    Search,
+    ArrowLeft,
+    X,
+    MessageSquare,
+    Send,
+    CheckSquare,
+    Calendar,
+    FileText,
+    Users,
+    BarChart2,
+    Settings,
+    List,
+    AlertCircle,
+    GanttChartSquare,
+    HardHat,
+    Clock,
+    Save,
+    History,
+    UploadCloud,
+    RefreshCw,
+    Eraser,
+    XCircle,
+    MoreHorizontal,
+    Paperclip,
+    Eye, // Keep Eye icon for View
+    BookOpen,
+    Filter,
+    ChevronsUpDown,
+    UserPlus,
+} from 'lucide-react'; // Added required icons
+
+// --- Mock Data ---
+// ... (mockRunAtRateDetails remains the same) ...
+const mockRunAtRateDetails = {
+    rnrName: "A test 22/10/25 new",
+    partName: "PART 1",
+    rnrId: "RunAtRate-2025-00037",
+    partNumber: "001",
+};
+
+// ... (mockRiskQuestions remains the same) ...
+const mockRiskQuestions = [
+    { id: 1, text: "1. Does the part present any innovation?" },
+    { id: 2, text: "2. Is an high complexity flowchart? (Number of process, Number of branch, complex flow..)" },
+    { id: 3, text: "3. Does the supplier manufacturing plant already deliver components in mass production to Stellantis?" },
+    { id: 4, text: "4. Does the supplier manufacturing plant already use similar process for automotive mass production (including for other OEM)?" },
+    { id: 5, text: "5. Does the supplier representative in charge of the capacity estimation and assessment is the Project or the Production Manager?" },
+    { id: 6, text: "6. Is the supplier person in charge of the capacity estimation and assessment trained and used with CAT procedure and tool-kit?" },
+    { id: 7, text: "7. In case of the plant is already delivering Stellantis: does the previous project(s) launch(es) occured without capacity issue? And are the current project(s) capacity and delivery situation OK?" },
+    { id: 8, text: "8. Is this part required high capital investment? (Yes if the part belong to one of the commodities designated manual-intensive in CAT procedure)." },
+    { id: 9, text: "9. Does temporary workers rate exceed 10%?" },
+    { id: 10, text: "10. Will the part be delivered Just in Time / Just in Sequence?" },
+    { id: 11, text: "11. Is the part subjected to labour intensive?" },
+];
+
+// ... (mockAssessmentSummary remains the same) ...
+const mockAssessmentSummary = [
+    { id: 1, group: "Self Assessment Authorised", answer: "No" },
+    { id: 2, group: "Labour Intensive", answer: "Yes" },
+    { id: 3, group: "RMR Requested", answer: "Yes" },
+];
+
+// ... (initialProcessData remains the same) ...
+const initialProcessData = [
+    { id: 1, seq: 1, name: "Process 1", machine: "Molding machine", part: "001", next: "Process 2", desc: "-" },
+    { id: 2, seq: 1.1, name: "Molding machine", machine: "", part: "001", next: "", desc: "Sub-process" },
+    { id: 3, seq: 2, name: "Process 2", machine: "Turning Machine", part: "001", next: "Process 3", desc: "-" },
+    { id: 4, seq: 2.1, name: "Turning Machine", machine: "", part: "001", next: "", desc: "Sub-process" },
+    { id: 5, seq: 3, name: "Process 3", machine: "Milling Machine", part: "001", next: "Process 4", desc: "-" },
+    { id: 6, seq: 3.1, name: "Milling Machine", machine: "", part: "001", next: "", desc: "Sub-process" },
+    { id: 7, seq: 4, name: "Process 4", machine: "Painting", part: "001", next: "Process 5", desc: "-" },
+    { id: 8, seq: 4.1, name: "Painting", machine: "", part: "001", next: "", desc: "Sub-process" },
+    { id: 9, seq: 5, name: "Process 5", machine: "Final Part", part: "001", next: "Last Process", desc: "-" },
+    { id: 10, seq: 5.1, name: "Final Part", machine: "", part: "001", next: "", desc: "Sub-process" },
+];
+
+// ... (mockAuthorizationLevels remains the same) ...
+const mockAuthorizationLevels = {
+    level1: [
+        { id: 1, user: "Admin User", role: "Quality Engineer", status: "New", signDate: "Not Signed", signature: "", history: "History" }
+    ],
+    level2: [
+        { id: 1, user: "Admin User", role: "SQE", status: "New", signDate: "Not Signed", signature: "", history: "History" }
+    ]
+};
+
+// ... (mockDocuments remains the same) ...
+const mockDocuments = [
+    { id: 1, seq: 1, name: "Process Layout", description: "-", mandatory: "No", attachments: [{ id: 1, name: "Process layout.png" }] },
+    { id: 2, seq: 2, name: "Production Shared Load", description: "-", mandatory: "No", attachments: [] },
+];
+
+// ... (mockStatusHistory remains the same) ...
+const mockStatusHistory = [
+    { id: 1, date: "17 Oct 2025", time: "01:05 PM", by: "Admin", status: "Run @ Rate Rejected", statusColor: "red", comment: "re" },
+    { id: 2, date: "17 Oct 2025", time: "01:05 PM", by: "Admin", status: "Initiate Authorization", statusColor: "green", comment: "Initiate Authorization" },
+    { id: 3, date: "17 Oct 2025", time: "01:04 PM", by: "Admin", status: "Declaration Completed", statusColor: "green", comment: "Declaration" },
+    { id: 4, date: "17 Oct 2025", time: "12:31 PM", by: "Admin", status: "In Progress", statusColor: "blue", comment: "New Process Added" },
+    { id: 5, date: "17 Oct 2025", time: "12:31 PM", by: "Admin", status: "Acknowledgement", statusColor: "blue", comment: "Acknowledge" },
+    { id: 6, date: "17 Oct 2025", time: "12:31 PM", by: "Admin", status: "Requested", statusColor: "gray", comment: "-" },
+];
+
+// ... (initialShiftData remains the same) ...
+const initialShiftData = {
+    regular: {
+        shift1: { mon: ["01:00", "23:00"], tue: ["01:00", "23:00"], wed: ["01:00", "23:00"], thu: ["01:00", "23:00"], fri: ["01:00", "23:00"], sat: ["00:00", "00:00"], sun: ["00:00", "00:00"] },
+        shift2: { mon: ["02:00", "04:00"], tue: ["02:00", "04:00"], wed: ["02:00", "04:00"], thu: ["02:00", "04:00"], fri: ["02:00", "04:00"], sat: ["00:00", "00:00"], sun: ["00:00", "00:00"] },
+        shift3: { mon: ["00:00", "00:00"], tue: ["00:00", "00:00"], wed: ["00:00", "00:00"], thu: ["00:00", "00:00"], fri: ["00:00", "00:00"], sat: ["00:00", "00:00"], sun: ["00:00", "00:00"] },
+        totals: { mon: "24.00", tue: "24.00", wed: "24.00", thu: "24.00", fri: "24.00", sat: "0.00", sun: "0.00" },
+        weeklyTotal: "120.00",
+    },
+    maximum: {
+        shift1: { mon: ["01:00", "23:00"], tue: ["01:00", "23:00"], wed: ["01:00", "23:00"], thu: ["01:00", "23:00"], fri: ["01:00", "23:00"], sat: ["01:00", "07:00"], sun: ["00:00", "00:00"] },
+        shift2: { mon: ["02:00", "04:00"], tue: ["02:00", "04:00"], wed: ["02:00", "04:00"], thu: ["02:00", "04:00"], fri: ["02:00", "04:00"], sat: ["00:00", "00:00"], sun: ["00:00", "00:00"] },
+        shift3: { mon: ["00:00", "00:00"], tue: ["00:00", "00:00"], wed: ["00:00", "00:00"], thu: ["00:00", "00:00"], fri: ["00:00", "00:00"], sat: ["00:00", "00:00"], sun: ["00:00", "00:00"] },
+        totals: { mon: "24.00", tue: "24.00", wed: "24.00", thu: "24.00", fri: "24.00", sat: "6.00", sun: "0.00" },
+        weeklyTotal: "150.00",
+    }
+};
+
+// ... (initialRnrList remains the same) ...
+const initialRnrList = [
+    { id: 1, name: "C test 22/10/25 new", rnrId: "RunAtRate-2025-00038", part: "001", revision: "A", date: "29 Oct 2025", status: "Run @ Rate Initiate", auditor: "Admin User", requestor: "Admin User", type: "Supplier Driven Run @ Rate", location: "", plant: "", supplierId: "1000000" },
+    { id: 2, name: "A test 22/10/25 new", rnrId: "RunAtRate-2025-00037", part: "001", revision: "", date: "29 Oct 2025", status: "In Progress", auditor: "Admin User", requestor: "Admin User", type: "Auditor Driven Run @ Rate", location: "", plant: "", supplierId: "1000000" },
+    { id: 3, name: "A test 22/10/25", rnrId: "RunAtRate-2025-00036", part: "001", revision: "", date: "30 Oct 2025", status: "In Progress", auditor: "Admin User", requestor: "Admin User", type: "Auditor Driven Run @ Rate", location: "", plant: "", supplierId: "1000000" },
+    { id: 4, name: "asd", rnrId: "RunAtRate-2025-00035", part: "78912484-A", revision: "", date: "18 Oct 2025", status: "Declaration Completed", auditor: "Admin User", requestor: "Admin User", type: "Auditor Driven Run @ Rate", location: "", plant: "", supplierId: "1000000" },
+    { id: 5, name: "fscsdfrvg", rnrId: "RunAtRate-2025-00034", part: "001", revision: "", date: "18 Oct 2025", status: "Run @ Rate Rejected", auditor: "Admin User", requestor: "Admin User", type: "Auditor Driven Run @ Rate", location: "", plant: "", supplierId: "1000000" },
+    { id: 6, name: "sadsad", rnrId: "RunAtRate-2025-00033", part: "78912484-A", revision: "", date: "16 Oct 2025", status: "Acknowledgement", auditor: "Admin User", requestor: "Admin User", type: "Auditor Driven Run @ Rate", location: "", plant: "", supplierId: "1000000" },
+    { id: 7, name: "Test - 1610 - Risk Assesment...", rnrId: "RunAtRate-2025-00032", part: "78591248 CC", revision: "", date: "06 Nov 2025", status: "Requested", auditor: "Admin User", requestor: "Admin User", type: "Collaborative Run @ Rate", location: "Banglore", plant: "Plant A", supplierId: "1000000" },
+    { id: 8, name: "asbPC", rnrId: "RunAtRate-2025-00030", part: "785912484-A", revision: "", date: "16 Oct 2025", status: "Requested", auditor: "Admin User", requestor: "Admin User", type: "Collaborative Run @ Rate", location: "Banglore", plant: "Plant A", supplierId: "1000000" },
+    { id: 9, name: "ORR 16-02", rnrId: "RunAtRate-2025-00029", part: "785912484A", revision: "AAA", date: "16 Oct 2025", status: "Declaration Completed", auditor: "Admin User", requestor: "Admin User", type: "Auditor Driven Run @ Rate", location: "", plant: "", supplierId: "1000000" },
+    { id: 10, name: "Auditorrr", rnrId: "RunAtRate-2025-00025", part: "785912484A-A", revision: "", date: "16 Oct 2025", status: "Run @ Rate Rejected", auditor: "Admin User", requestor: "Admin User", type: "Auditor Driven Run @ Rate", location: "", plant: "", supplierId: "1000000" },
+    // Add more mock data for the "All R@R" section if needed
+    { id: 11, name: "Supplier R@R Example", rnrId: "RunAtRate-2025-00024", part: "XYZ-123", revision: "B", date: "15 Oct 2025", status: "Requested", auditor: "Other User", requestor: "Supplier User", type: "Supplier Driven Run @ Rate", location: "Mumbai", plant: "Plant B", supplierId: "2000000" },
+    { id: 12, name: "Another Test R@R", rnrId: "RunAtRate-2025-00023", part: "ABC-456", revision: "", date: "14 Oct 2025", status: "In Progress", auditor: "Admin User", requestor: "Admin User", type: "Collaborative Run @ Rate", location: "Pune", plant: "Plant C", supplierId: "3000000" },
+];
+
+
+// --- Main Application Component ---
+export default function App() {
+// ... (App component state and handlers remain the same) ...
+    const [currentView, setCurrentView] = useState('list'); // 'list', 'details', 'create'
+    const [selectedRnr, setSelectedRnr] = useState(null);
+    const [rnrList, setRnrList] = useState(initialRnrList);
+
+    const handleGoToDetails = (rnr) => {
+        setSelectedRnr(rnr);
+        setCurrentView('details');
+    };
+
+    const handleGoToList = () => {
+        setSelectedRnr(null);
+        setCurrentView('list');
+    };
+
+    const handleGoToCreate = () => {
+        setCurrentView('create');
+    };
+    
+    const handleCreateRnr = (newRnr) => {
+        const newId = Math.max(...rnrList.map(r => r.id)) + 1;
+        const newRnrItem = {
+            ...newRnr,
+            id: newId,
+            rnrId: `RunAtRate-2025-000${newId}`,
+            status: "Requested",
+            auditor: "Admin User",
+            requestor: "Admin User",
+        };
+        setRnrList([newRnrItem, ...rnrList]);
+        handleGoToList();
+    };
+
+    const renderView = () => {
+        switch (currentView) {
+            case 'list':
+                return <MyRnrList 
+                            rnrList={rnrList} 
+                            onGoToDetails={handleGoToDetails} 
+                            onGoToCreate={handleGoToCreate}
+                        />;
+            case 'details':
+                return <DetailsView 
+                            rnr={selectedRnr} 
+                            onGoToList={handleGoToList} 
+                        />;
+            case 'create':
+                return <CreateRnrForm 
+                            onGoToList={handleGoToList}
+                            onCreateRnr={handleCreateRnr}
+                        />;
+            default:
+                return <MyRnrList 
+                            rnrList={rnrList} 
+                            onGoToDetails={handleGoToDetails} 
+                            onGoToCreate={handleGoToCreate}
+                        />;
+        }
+    };
+
+    return (
+        <div className="flex flex-col min-h-screen bg-gray-50 font-inter text-sm">
+            {renderView()}
+        </div>
+    );
+}
+
+// --- View Components ---
+
+/**
+ * MyRnrList Component (image_9c9144.png, image_9c3bc1.png)
+ * The main dashboard/list view with accordions.
+ */
+function MyRnrList({ rnrList, onGoToDetails, onGoToCreate }) {
+    const [openAccordion, setOpenAccordion] = useState('my'); // 'my', 'all', 'none'
+
+    // Simple split for demo: "My" = requestor is Admin User, "All" = rest
+    const myRnr = rnrList.filter(r => r.requestor === "Admin User");
+    const allRnr = rnrList.filter(r => r.requestor !== "Admin User"); // Adjust logic as needed
+
+    const toggleAccordion = (section) => {
+        setOpenAccordion(prev => (prev === section ? 'none' : section));
+    };
+
+    const getStatusColor = (status) => {
+        if (status.includes("Rejected")) return "bg-red-100 text-red-800";
+        if (status.includes("Completed")) return "bg-green-100 text-green-800";
+        if (status.includes("Progress")) return "bg-blue-100 text-blue-800";
+        if (status.includes("Initiate")) return "bg-purple-100 text-purple-800";
+        if (status.includes("Acknowledgement")) return "bg-yellow-100 text-yellow-800";
+        if (status.includes("Requested")) return "bg-gray-100 text-gray-800";
+        return "bg-gray-100 text-gray-800";
+    };
+    
+    const canShowReport = (status) => {
+         return status.includes("Completed") || status.includes("Accepted") || status.includes("Rejected");
+    };
+
+    const headers = [
+        "R@R Name", "R@R ID", "Part Number", "Part Revision", "R@R Date", "R@R Status",
+        "R@R Auditor", "R@R Requestor", "Type of Run@Rate", "Location",
+        "Manufacturing Plant", "Supplier ID"
+    ];
+
+    const renderTable = (data) => (
+        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+            <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                    <tr>
+                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        {headers.map(h => (
+                            <th key={h} className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">{h}</th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                    {data.map(item => (
+                        <tr key={item.id} className="hover:bg-gray-50">
+                            <td className="px-3 py-3 whitespace-nowrap">
+                                <div className="flex space-x-2">
+                                    <button onClick={() => onGoToDetails(item)} className="text-gray-400 hover:text-blue-600" title="Edit"><Pencil className="w-4 h-4" /></button>
+                                    <button onClick={() => onGoToDetails(item)} className="text-gray-400 hover:text-green-600" title="View"><Eye className="w-4 h-4" /></button>
+                                    <button className="text-gray-400 hover:text-red-600" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                    {canShowReport(item.status) && (
+                                        <button className="text-gray-400 hover:text-purple-600" title="Report"><FileText className="w-4 h-4" /></button>
+                                    )}
+                                </div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-xs font-medium text-blue-600 cursor-pointer hover:underline" onClick={() => onGoToDetails(item)}>{item.name}</td>
+                            <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-700">{item.rnrId}</td>
+                            <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-700">{item.part}</td>
+                            <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-700">{item.revision}</td>
+                            <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-700">{item.date}</td>
+                            <td className="px-3 py-3 whitespace-nowrap text-xs">
+                                <span className={`px-2 py-0.5 font-medium rounded-full ${getStatusColor(item.status)}`}>
+                                    {item.status}
+                                </span>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-700">{item.auditor}</td>
+                            <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-700">{item.requestor}</td>
+                            <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-700">{item.type}</td>
+                            <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-700">{item.location}</td>
+                            <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-700">{item.plant}</td>
+                            <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-700">{item.supplierId}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+
+    return (
+        <div className="flex flex-col h-screen">
+            <header className="bg-white shadow-sm p-4 sticky top-0 z-20">
+                <div className="flex justify-between items-center">
+                    <h1 className="text-xl font-semibold text-gray-800">My R@R</h1>
+                    <div className="flex items-center space-x-2">
+                        <span className="text-sm text-gray-600">Accepted R@R</span>
+                        <div className="relative inline-block w-10 mr-2 align-middle select-none">
+                            <input type="checkbox" name="toggle" id="toggle" className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                            <label htmlFor="toggle" className="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer"></label>
+                        </div>
+                        <span className="text-sm text-gray-600">Cancelled R@R</span>
+                         <div className="relative inline-block w-10 mr-2 align-middle select-none">
+                            <input type="checkbox" name="toggle2" id="toggle2" className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                            <label htmlFor="toggle2" className="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer"></label>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <main className="flex-grow p-4 md:p-6 space-y-4">
+                 <div className="bg-white p-4 rounded-lg shadow-sm">
+                    <div className="flex justify-between items-center mb-4">
+                        <button 
+                            onClick={onGoToCreate}
+                            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md shadow-sm hover:bg-blue-700"
+                        >
+                            <Plus className="w-4 h-4 inline mr-1" />
+                            Create New R@R
+                        </button>
+                        <div className="flex items-center space-x-2">
+                            <div className="relative">
+                                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <input 
+                                    type="text" 
+                                    placeholder="Search..."
+                                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md shadow-sm"
+                                />
+                            </div>
+                            <button className="p-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-100">
+                                <Filter className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Accordion Section */}
+                <div className="space-y-4">
+                    {/* My Run @ Rate Accordion */}
+                    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                        <button 
+                            onClick={() => toggleAccordion('my')}
+                            className="w-full flex justify-between items-center p-4 bg-gray-50 hover:bg-gray-100"
+                        >
+                            <span className="font-semibold text-gray-700">My Run @ Rate</span>
+                            {openAccordion === 'my' ? <ChevronDown className="w-5 h-5 text-gray-500" /> : <ChevronRight className="w-5 h-5 text-gray-500" />}
+                        </button>
+                        {openAccordion === 'my' && (
+                            <div className="p-4">
+                                {renderTable(myRnr)}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* All Run @ Rate Accordion */}
+                    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                        <button 
+                            onClick={() => toggleAccordion('all')}
+                            className="w-full flex justify-between items-center p-4 bg-gray-50 hover:bg-gray-100"
+                        >
+                            <span className="font-semibold text-gray-700">All Run @ Rate</span>
+                             {openAccordion === 'all' ? <ChevronDown className="w-5 h-5 text-gray-500" /> : <ChevronRight className="w-5 h-5 text-gray-500" />}
+                        </button>
+                         {openAccordion === 'all' && (
+                            <div className="p-4">
+                                {renderTable(allRnr)}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </main>
+            {/* Fake toggle switch CSS */}
+            <style>{`
+                .toggle-checkbox:checked {
+                    right: 0;
+                    border-color: #4A5568;
+                }
+                .toggle-checkbox:checked + .toggle-label {
+                    background-color: #4A5568;
+                }
+            `}</style>
+        </div>
+    );
+}
+
+/**
+ * CreateRnrForm Component (image_9c9123.png, image_9c9101.png, image_9c3f66.png)
+ * Form for creating a new R@R.
+ */
+// ... (CreateRnrForm component remains the same) ...
+function CreateRnrForm({ onGoToList, onCreateRnr }) {
+    const [formData, setFormData] = useState({
+        rnrName: '',
+        requestCreationDate: '23 Oct 2025',
+        rnrId: 'RunAtRate-2025-00039',
+        type: 'Collaborative Run @ Rate',
+        partNumber: '',
+        targetDeclarationDate: '',
+        partRevision: '',
+        runAtRateAuditDate: '',
+        partName: '',
+        auditor: '',
+        rnrRequestor: 'Admin User (admin)',
+        location: '',
+        manufacturingPlant: '',
+        program: '',
+        oemName: '',
+        reasonForRunAtRate: '',
+        category: '',
+        template: '',
+        supplier: '',
+        supplierLocation: '',
+        supplierCoordinator: '',
+        supplierPlant: '',
+    });
+    
+    const [relatedParts, setRelatedParts] = useState([]);
+
+    const handleChange = (e) => {
+        const { id, value } = e.target;
+        setFormData(prev => ({ ...prev, [id]: value }));
+    };
+    
+    const handleRadioChange = (e) => {
+        setFormData(prev => ({ ...prev, type: e.target.value }));
+    };
+    
+    const handleSubmit = () => {
+        // Simple demo create
+        onCreateRnr({
+            name: formData.rnrName,
+            part: formData.partNumber,
+            revision: formData.partRevision,
+            date: formData.targetDeclarationDate,
+            type: formData.type,
+            location: formData.location,
+            plant: formData.manufacturingPlant,
+            supplierId: '1000000', // Mock
+        });
+    };
+
+    return (
+        <div className="flex flex-col min-h-screen">
+            <header className="bg-white shadow-sm p-4 sticky top-0 z-20">
+                <div className="flex justify-start items-center space-x-3">
+                    <button onClick={onGoToList} className="text-gray-500 hover:text-gray-800">
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <h1 className="text-xl font-semibold text-gray-800">Create R@R</h1>
+                </div>
+            </header>
+
+            <main className="flex-grow p-4 md:p-6 space-y-6">
+                <div className="bg-white p-6 rounded-lg shadow-sm space-y-6">
+                    {/* R@R Details Section */}
+                    <h3 className="text-base font-semibold text-blue-700">R@R Details</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                        <FormInput label="R@R Name" id="rnrName" value={formData.rnrName} onChange={handleChange} required />
+                        <FormInput label="R@R Id" id="rnrId" value={formData.rnrId} readOnly />
+                        <FormInput label="Request Creation Date" id="requestCreationDate" value={formData.requestCreationDate} readOnly />
+                        
+                        {/* Radio Buttons */}
+                        <div className="flex items-center space-x-6">
+                            <label className="flex items-center">
+                                <input type="radio" name="rnrType" value="Collaborative Run @ Rate" checked={formData.type === 'Collaborative Run @ Rate'} onChange={handleRadioChange} className="form-radio" />
+                                <span className="ml-2 text-sm">Collaborative Run @ Rate</span>
+                            </label>
+                            <label className="flex items-center">
+                                <input type="radio" name="rnrType" value="Supplier Driven Run @ Rate" checked={formData.type === 'Supplier Driven Run @ Rate'} onChange={handleRadioChange} className="form-radio" />
+                                <span className="ml-2 text-sm">Supplier Driven Run @ Rate</span>
+                            </label>
+                            <label className="flex items-center">
+                                <input type="radio" name="rnrType" value="Auditor Driven Run @ Rate" checked={formData.type === 'Auditor Driven Run @ Rate'} onChange={handleRadioChange} className="form-radio" />
+                                <span className="ml-2 text-sm">Auditor Driven Run @ Rate</span>
+                            </label>
+                        </div>
+
+                        <div className="relative">
+                            <FormInput label="Part Number" id="partNumber" value={formData.partNumber} onChange={handleChange} required />
+                            <button className="absolute right-1 top-[29px] px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md">Choose Part</button>
+                        </div>
+                        <FormInput label="Target Declaration Date" id="targetDeclarationDate" type="date" value={formData.targetDeclarationDate} onChange={handleChange} required />
+                        <FormSelect label="Part Revision" id="partRevision" value={formData.partRevision} onChange={handleChange} required>
+                            <option value="">Select Part Revision...</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                        </FormSelect>
+                        <FormInput label="Run @ Rate Audit Date" id="runAtRateAuditDate" type="date" value={formData.runAtRateAuditDate} onChange={handleChange} />
+                        <FormInput label="Part Name" id="partName" value={formData.partName} readOnly />
+                        <FormSelect label="Auditor" id="auditor" value={formData.auditor} onChange={handleChange} required>
+                            <option value="">Select Auditor...</option>
+                            <option value="Admin User">Admin User</option>
+                        </FormSelect>
+                        <FormInput label="R@R Requestor" id="rnrRequestor" value={formData.rnrRequestor} readOnly />
+                        <FormSelect label="Location" id="location" value={formData.location} onChange={handleChange}>
+                            <option value="">Select Location...</option>
+                            <option value="Banglore">Banglore</option>
+                        </FormSelect>
+                        <FormSelect label="Manufacturing Plant" id="manufacturingPlant" value={formData.manufacturingPlant} onChange={handleChange}>
+                            <option value="">Select Manufacturing Plant...</option>
+                            <option value="Plant A">Plant A</option>
+                        </FormSelect>
+                        <FormSelect label="Program" id="program" value={formData.program} onChange={handleChange}>
+                            <option value="">Select Program...</option>
+                        </FormSelect>
+                        <FormSelect label="OEM Name" id="oemName" value={formData.oemName} onChange={handleChange}>
+                            <option value="">Select OEM Name...</option>
+                        </FormSelect>
+                        <FormInput label="Reason for Run At Rate" id="reasonForRunAtRate" value={formData.reasonForRunAtRate} onChange={handleChange} required />
+                        <FormSelect label="Category" id="category" value={formData.category} onChange={handleChange}>
+                            <option value="">Select Category...</option>
+                        </FormSelect>
+                    </div>
+
+                    {/* Related Part Numbers Section */}
+                    <div className="border border-gray-200 rounded-lg">
+                        <div className="p-4 border-b">
+                            <h3 className="text-base font-semibold text-blue-700">Related Part Numbers:</h3>
+                        </div>
+                        <div className="p-4">
+                            <div className="flex justify-end space-x-2 mb-2">
+                                <button className="p-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"><Plus className="w-4 h-4" /></button>
+                                <button className="p-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"><UserPlus className="w-4 h-4" /></button>
+                                <button className="p-2 text-white bg-red-600 rounded-md hover:bg-red-700"><Trash2 className="w-4 h-4" /></button>
+                            </div>
+                            <table className="min-w-full divide-y divide-gray-200 border">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Part Number</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Part Name</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Part Revision</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Delete</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    <tr>
+                                        <td colSpan="5" className="p-4 text-center text-sm text-gray-500">No data found</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Template Section */}
+                    <h3 className="text-base font-semibold text-blue-700">Template</h3>
+                    <FormSelect label="Template" id="template" value={formData.template} onChange={handleChange} required>
+                        <option value="">Select Template...</option>
+                        <option value="Stellantis - All Regions NEW">Stellantis - All Regions NEW</option>
+                    </FormSelect>
+
+                    {/* Supplier Details Section */}
+                    <h3 className="text-base font-semibold text-blue-700">Supplier Details</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                        <div className="relative">
+                            <FormInput label="Supplier" id="supplier" value={formData.supplier} onChange={handleChange} required />
+                            <button className="absolute right-1 top-[29px] px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md">Choose Supplier</button>
+                        </div>
+                        <FormSelect label="Supplier Location" id="supplierLocation" value={formData.supplierLocation} onChange={handleChange} required>
+                            <option value="">Select Supplier Location...</option>
+                        </FormSelect>
+                        <FormSelect label="Supplier Coordinator" id="supplierCoordinator" value={formData.supplierCoordinator} onChange={handleChange} required>
+                            <option value="">Select Supplier Coordinator...</option>
+                        </FormSelect>
+                        <FormSelect label="Supplier Plant" id="supplierPlant" value={formData.supplierPlant} onChange={handleChange} required>
+                            <option value="">Select Supplier Plant...</option>
+                        </FormSelect>
+                    </div>
+                </div>
+            </main>
+            
+            <footer className="sticky bottom-0 bg-white p-4 border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
+                <div className="flex justify-end space-x-3">
+                    <button 
+                        onClick={onGoToList}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
+                    >
+                        Cancel
+                    </button>
+                    <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md shadow-sm hover:bg-blue-700">
+                        <Save className="w-4 h-4 inline mr-1" />
+                        Save Draft
+                    </button>
+                    <button 
+                        onClick={handleSubmit}
+                        className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md shadow-sm hover:bg-green-700"
+                    >
+                        <CheckCircle className="w-4 h-4 inline mr-1" />
+                        Create
+                    </button>
+                </div>
+            </footer>
+        </div>
+    );
+}
+
+/**
+ * DetailsView Component
+ * This is the 12-tab view for a single R@R.
+ */
+// ... (DetailsView component remains the same) ...
+function DetailsView({ rnr, onGoToList }) {
+    // --- State ---
+    const [activeTab, setActiveTab] = useState('Capacity Risk Assessment');
+    const [currentStep, setCurrentStep] = useState(3); // 0-indexed, 3 means "Declaration Completed"
+    const [currentStatus, setCurrentStatus] = useState('active'); // 'active', 'rejected'
+    
+    // Data state
+    const [riskAnswers, setRiskAnswers] = useState({ 1: 'NO', 2: 'YES', 3: 'NO', 4: 'YES', 5: 'YES', 6: 'YES', 7: 'NO', 8: 'NO', 9: 'NO', 10: 'YES', 11: 'YES' });
+    const [processes, setProcesses] = useState(initialProcessData);
+    const [actionLog, setActionLog] = useState([]); 
+    const [rmrTracking, setRmrTracking] = useState([]);
+    const [shiftData, setShiftData] = useState(initialShiftData);
+    const [documents, setDocuments] = useState(mockDocuments);
+
+    // Modal state
+    const [showAddProcessModal, setShowAddProcessModal] = useState(false);
+    const [showMappingModal, setShowMappingModal] = useState(false);
+    const [showAddMachineModal, setShowAddMachineModal] = useState(false);
+    const [showMachineDetailsModal, setShowMachineDetailsModal] = useState(false);
+    const [showOverrideModal, setShowOverrideModal] = useState(false);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [showCreateTaskModal, setShowCreateTaskModal] = useState(false); 
+    const [showStatusHistoryModal, setShowStatusHistoryModal] = useState(false); 
+    const [showAddTrackingModal, setShowAddTrackingModal] = useState(false);
+    const [showViewAttachmentsModal, setShowViewAttachmentsModal] = useState(false); // New
+    const [showAddAttachmentsModal, setShowAddAttachmentsModal] = useState(false); // New
+    const [currentDoc, setCurrentDoc] = useState(null); // To track which doc to show attachments for
+
+    // --- Handlers ---
+    const handleAddProcess = (newProcess) => {
+        setProcesses([...processes, { ...newProcess, id: processes.length + 1 }]);
+    };
+
+    const handleCreateTask = (newTask) => {
+        setActionLog([...actionLog, { ...newTask, id: actionLog.length + 1, taskNo: `T-${actionLog.length + 1}`, status: 'Pending' }]);
+    };
+    
+    const handleRiskAnswer = (id, answer) => {
+        setRiskAnswers(prev => ({ ...prev, [id]: answer }));
+    };
+
+    const handleAddTracking = (newTracking) => {
+        setRmrTracking([...rmrTracking, { ...newTracking, id: rmrTracking.length + 1 }]);
+    };
+    
+    const handleShiftChange = (type, shift, day, part, value) => {
+        setShiftData(prev => {
+            const newData = JSON.parse(JSON.stringify(prev)); // Deep copy
+            newData[type][shift][day][part] = value;
+            // In a real app, recalculate totals here
+            return newData;
+        });
+    };
+    
+    const handleShowAttachments = (doc) => {
+        setCurrentDoc(doc);
+        setShowViewAttachmentsModal(true);
+    };
+
+    const handleShowAddAttachment = (doc) => {
+        setCurrentDoc(doc);
+        setShowAddAttachmentsModal(true);
+    };
+
+    // --- Tabs ---
+    const tabs = [
+        { name: 'Capacity Risk Assessment', icon: AlertCircle },
+        { name: 'Process Details', icon: GanttChartSquare },
+        { name: 'Action Log', icon: List },
+        { name: 'Authorization', icon: Users },
+        { name: 'Conversation', icon: MessageSquare },
+        { name: 'Production Shared Load', icon: BarChart2 },
+        { name: 'Tier 2', icon: Users },
+        { name: 'Ramp Up', icon: BarChart2 },
+        { name: 'Documents', icon: FileText },
+        { name: 'RMR Tracking', icon: Settings },
+        { name: 'Labor Intensive', icon: HardHat },
+        { name: 'Supplier Work Schedule', icon: Clock },
+    ];
+
+    const tabComponents = {
+        'Capacity Risk Assessment': (
+            <CapacityRiskTab 
+                questions={mockRiskQuestions} 
+                answers={riskAnswers} 
+                onAnswer={handleRiskAnswer}
+                summaryData={mockAssessmentSummary}
+                onShowOverride={() => setShowOverrideModal(true)}
+                onShowHistory={() => setShowHistoryModal(true)}
+            />
+        ),
+        'Process Details': <ProcessDetailsTab 
+                                processes={processes} 
+                                setProcesses={setProcesses} 
+                                onShowAddProcess={() => setShowAddProcessModal(true)}
+                                onShowMapping={() => setShowMappingModal(true)}
+                                onShowAddMachine={() => setShowAddMachineModal(true)}
+                                onShowMachineDetails={() => setShowMachineDetailsModal(true)}
+                            />,
+        'Action Log': <ActionLogTab 
+                        actions={actionLog}
+                        onShowCreateTask={() => setShowCreateTaskModal(true)}
+                      />, 
+        'Authorization': <AuthorizationTab levels={mockAuthorizationLevels} />,
+        'Conversation': <PlaceholderTab name="Conversation" />,
+        'Production Shared Load': <PlaceholderTab name="Production Shared Load" />,
+        'Tier 2': <PlaceholderTab name="Tier 2" />,
+        'Ramp Up': <PlaceholderTab name="Ramp Up" />,
+        'Documents': <DocumentsTab 
+                        documents={documents} 
+                        onShowAttachments={handleShowAttachments}
+                        onShowAddAttachment={handleShowAddAttachment}
+                    />, // Updated
+        'RMR Tracking': <RMRTrackingTab 
+                            trackingData={rmrTracking} 
+                            onShowAddTracking={() => setShowAddTrackingModal(true)} 
+                        />, 
+        'Labor Intensive': <PlaceholderTab name="Labor Intensive" />,
+        'Supplier Work Schedule': <SupplierWorkScheduleTab 
+                                    shiftData={shiftData}
+                                    onShiftChange={handleShiftChange}
+                                />, 
+    };
+
+    // --- Render ---
+    return (
+        <div className="flex flex-col min-h-screen">
+            {/* --- Header (Placeholder) --- */}
+            <header className="bg-white shadow-sm p-4 sticky top-0 z-20">
+                <div className="flex justify-between items-center">
+                    <div className="flex items-center space-x-3">
+                         <button onClick={onGoToList} className="text-gray-500 hover:text-gray-800">
+                            <ArrowLeft className="w-5 h-5" />
+                        </button>
+                        <h1 className="text-xl font-semibold text-gray-800">Run @ Rate View Details</h1>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                        <button 
+                            className="text-xs text-blue-600 hover:underline"
+                            onClick={() => {
+                                setCurrentStatus(s => s === 'rejected' ? 'active' : 'rejected');
+                                setCurrentStep(s => s === 4 ? 3 : 4);
+                            }}
+                        >
+                            Toggle Status (Demo)
+                        </button>
+                        <button 
+                            onClick={() => setShowStatusHistoryModal(true)}
+                            className="text-xs text-blue-600 hover:underline cursor-pointer"
+                        >
+                            Status History
+                        </button>
+                        <span className="text-xs text-blue-600 hover:underline cursor-pointer">More Details</span>
+                    </div>
+                </div>
+            </header>
+
+            <main className="flex-grow p-4 md:p-6 space-y-6">
+                {/* --- Status Stepper --- */}
+                <Stepper currentStep={currentStep} status={currentStatus} />
+                
+                {/* --- Main Details Section (Simplified) --- */}
+                <RunAtRateDetails details={mockRunAtRateDetails} />
+
+                {/* --- Tab Navigation --- */}
+                <TabNavigation 
+                    tabs={tabs} 
+                    activeTab={activeTab} 
+                    onTabClick={setActiveTab} 
+                />
+
+                {/* --- Tab Content --- */}
+                <div className="bg-white rounded-lg shadow-sm">
+                    {tabComponents[activeTab]}
+                </div>
+            </main>
+
+            {/* --- Sticky Footer --- */}
+            <FooterBar />
+
+            {/* --- Modals --- */}
+            {showAddProcessModal && (
+                <AddProcessModal 
+                    onClose={() => setShowAddProcessModal(false)}
+                    onAddProcess={handleAddProcess}
+                    currentMaxSeq={Math.floor(Math.max(...processes.map(p => p.seq)))}
+                />
+            )}
+            
+            {showMappingModal && (
+                <ProcessMappingModal
+                    onClose={() => setShowMappingModal(false)}
+                    processes={processes.filter(p => !p.name.includes('machine'))} // Only show main processes
+                />
+            )}
+            
+            {showAddMachineModal && (
+                <AddMachineModal
+                    onClose={() => setShowAddMachineModal(false)}
+                />
+            )}
+
+            {showMachineDetailsModal && (
+                <MachineDetailsModal
+                    onClose={() => setShowMachineDetailsModal(false)}
+                />
+            )}
+
+            {showOverrideModal && (
+                <OverrideModal
+                    onClose={() => setShowOverrideModal(false)}
+                />
+            )}
+
+            {showHistoryModal && (
+                <AssessmentHistoryModal
+                    onClose={() => setShowHistoryModal(false)}
+                />
+            )}
+
+            {showCreateTaskModal && (
+                <CreateTaskModal
+                    onClose={() => setShowCreateTaskModal(false)}
+                    onCreateTask={handleCreateTask}
+                />
+            )}
+            
+            {showStatusHistoryModal && (
+                <StatusHistoryModal
+                    onClose={() => setShowStatusHistoryModal(false)}
+                    history={mockStatusHistory}
+                />
+            )}
+
+            {showAddTrackingModal && (
+                <AddTrackingModal
+                    onClose={() => setShowAddTrackingModal(false)}
+                    onSave={handleAddTracking}
+                />
+            )}
+            
+            {showViewAttachmentsModal && (
+                <ViewAttachmentsModal
+                    onClose={() => setShowViewAttachmentsModal(false)}
+                    doc={currentDoc}
+                />
+            )}
+            
+            {showAddAttachmentsModal && (
+                <AddAttachmentsModal
+                    onClose={() => setShowAddAttachmentsModal(false)}
+                    doc={currentDoc}
+                />
+            )}
+        </div>
+    );
+}
+
+
+// --- Components ---
+
+/**
+ * Stepper Component
+ */
+// ... (Stepper component remains the same) ...
+function Stepper({ currentStep, status }) {
+    const steps = [
+        "Requested",
+        "Acknowledgement",
+        "In Progress",
+        "Declaration Completed",
+        "Run @ Rate " + (status === 'rejected' ? 'Rejected' : 'Accepted')
+    ];
+
+    // Final step is special
+    const finalStepIndex = steps.length - 1;
+
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-sm">
+            <nav className="flex items-center justify-between" aria-label="Progress">
+                {steps.map((step, index) => {
+                    const isCompleted = index < currentStep;
+                    const isActive = index === currentStep;
+                    const isRejected = status === 'rejected' && index === finalStepIndex;
+
+                    let IconComponent = Circle;
+                    let iconColor = 'text-gray-300';
+                    let stepColor = 'text-gray-500';
+
+                    if (isCompleted) {
+                        IconComponent = CheckCircle;
+                        iconColor = 'text-green-500';
+                        stepColor = 'text-gray-500';
+                    } else if (isActive) {
+                        IconComponent = Circle;
+                        iconColor = 'text-blue-600';
+                        stepColor = 'text-blue-600';
+                    }
+                    
+                    if (isRejected) {
+                        IconComponent = XCircle;
+                        iconColor = 'text-red-500';
+                        stepColor = 'text-red-500';
+                    }
+                    
+                    // The last step is special, it's not "active" if rejected
+                    if (index === finalStepIndex) {
+                        if (isRejected) {
+                           // Already set
+                        } else if (isCompleted) {
+                            IconComponent = CheckCircle;
+                            iconColor = 'text-green-500';
+                            stepColor = 'text-gray-500';
+                        } else {
+                             IconComponent = Circle;
+                             iconColor = 'text-gray-300';
+                             stepColor = 'text-gray-500';
+                        }
+                    }
+
+                    return (
+                        <React.Fragment key={step}>
+                            <div className="flex flex-col items-center text-center">
+                                <IconComponent className={`w-6 h-6 ${iconColor}`} />
+                                <span className={`mt-2 text-xs font-medium ${stepColor}`}>
+                                    {step}
+                                </span>
+                            </div>
+                            {index < steps.length - 1 && (
+                                <div className={`flex-1 h-0.5 mx-2 ${isCompleted && !(isRejected && index === finalStepIndex - 1) ? 'bg-green-500' : 'bg-gray-200'}`} />
+                            )}
+                        </React.Fragment>
+                    );
+                })}
+            </nav>
+        </div>
+    );
+}
+
+/**
+ * RunAtRateDetails Component
+ */
+// ... (RunAtRateDetails component remains the same) ...
+function RunAtRateDetails({ details }) {
+    const detailItems = [
+        { label: "R@R Name:", value: details.rnrName },
+        { label: "Part Name:", value: details.partName },
+        { label: "R@R Id:", value: details.rnrId },
+        { label: "Part Number:", value: details.partNumber },
+    ];
+
+    return (
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden p-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
+                {detailItems.map(item => (
+                    <div key={item.label}>
+                        <dt className="text-xs text-gray-500">{item.label}</dt>
+                        <dd className="text-sm font-medium text-gray-800">{item.value}</dd>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+/**
+ * TabNavigation Component
+ */
+// ... (TabNavigation component remains the same) ...
+function TabNavigation({ tabs, activeTab, onTabClick }) {
+    return (
+        <div className="bg-white rounded-lg shadow-sm sticky top-[73px] z-10">
+            <div className="overflow-x-auto whitespace-nowrap">
+                <nav className="flex border-b border-gray-200 -mb-px">
+                    {tabs.map((tab) => (
+                        <button
+                            key={tab.name}
+                            onClick={() => onTabClick(tab.name)}
+                            className={`flex items-center space-x-2 py-3 px-4 text-sm font-medium ${
+                                activeTab === tab.name
+                                    ? 'border-b-2 border-blue-500 text-blue-600'
+                                    : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            }`}
+                        >
+                            <tab.icon className="w-4 h-4" />
+                            <span>{tab.name}</span>
+                        </button>
+                    ))}
+                </nav>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * FooterBar Component
+ */
+// ... (FooterBar component remains the same) ...
+function FooterBar() {
+    return (
+        <footer className="sticky bottom-0 bg-white p-4 border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
+            <div className="flex justify-between items-center">
+                <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <ArrowLeft className="w-4 h-4 inline mr-1" />
+                    Back
+                </button>
+                <div className="flex space-x-3">
+                    <button className="px-4 py-2 text-sm font-medium text-red-700 bg-white border border-red-300 rounded-md shadow-sm hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                        <X className="w-4 h-4 inline mr-1" />
+                        Cancel R@R
+                    </button>
+                    <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <Send className="w-4 h-4 inline mr-1" />
+                        Reply
+                    </button>
+                    <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <CheckSquare className="w-4 h-4 inline mr-1" />
+                        Declaration
+                    </button>
+                </div>
+            </div>
+        </footer>
+    );
+}
+
+// --- Tab Content Components ---
+
+/**
+ * CapacityRiskTab Component
+ */
+// ... (CapacityRiskTab component remains the same) ...
+function CapacityRiskTab({ questions, answers, onAnswer, summaryData, onShowOverride, onShowHistory }) {
+    return (
+        <div className="p-6 space-y-6">
+            <h3 className="text-base font-semibold text-blue-700">Please answer the question below to perform the assessment.</h3>
+            {/* Questions Section */}
+            <div className="space-y-8">
+                {questions.map((q) => (
+                    <div key={q.id}>
+                        <p className="font-medium text-gray-800 mb-3">{q.text}</p>
+                        <div className="flex space-x-3">
+                            <button
+                                onClick={() => onAnswer(q.id, 'YES')}
+                                className={`px-6 py-2 rounded-md font-medium ${
+                                    answers[q.id] === 'YES'
+                                        ? 'bg-blue-600 text-white shadow-md'
+                                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                                }`}
+                            >
+                                YES
+                            </button>
+                            <button
+                                onClick={() => onAnswer(q.id, 'NO')}
+                                className={`px-6 py-2 rounded-md font-medium ${
+                                    answers[q.id] === 'NO'
+                                        ? 'bg-blue-600 text-white shadow-md'
+                                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                                }`}
+                            >
+                                NO
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Save Button */}
+            <div className="pt-4 border-t border-gray-200">
+                <button className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md shadow-sm hover:bg-green-700">
+                    <Save className="w-4 h-4 inline mr-1" />
+                    Save Assessment
+                </button>
+            </div>
+
+            {/* Summary Table */}
+            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sl.No</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Group</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Final Answer</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Override</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">View History</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {summaryData.map((row) => (
+                            <tr key={row.id}>
+                                <td className="px-4 py-3 text-xs text-gray-700">{row.id}</td>
+                                <td className="px-4 py-3 text-xs text-gray-700">{row.group}</td>
+                                <td className="px-4 py-3 text-xs font-medium text-gray-800">{row.answer}</td>
+                                <td className="px-4 py-3 text-xs text-gray-700">
+                                    <button 
+                                        onClick={onShowOverride}
+                                        className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                                    >
+                                        Override
+                                    </button>
+                                </td>
+                                <td className="px-4 py-3 text-xs text-gray-700">
+                                    <button 
+                                        onClick={onShowHistory}
+                                        className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                                    >
+                                        History
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * ProcessDetailsTab Component
+ */
+// ... (ProcessDetailsTab component remains the same) ...
+function ProcessDetailsTab({ processes, setProcesses, onShowAddProcess, onShowMapping, onShowAddMachine, onShowMachineDetails }) {
+    // This is a demo. In a real app, this would be a complex API call.
+    const deleteProcess = (id) => {
+        setProcesses(prev => prev.filter(p => p.id !== id));
+    };
+
+    return (
+        <div className="p-6 space-y-4">
+            <div className="flex justify-between items-center">
+                <h3 className="text-base font-semibold text-blue-700">Process Details</h3>
+                <div className="flex space-x-2">
+                    <button 
+                        onClick={onShowMapping}
+                        className="px-3 py-2 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100"
+                    >
+                        <ArrowRight className="w-4 h-4 inline mr-1" />
+                        Next Process Mapping
+                    </button>
+                    <button 
+                        onClick={onShowAddProcess}
+                        className="px-3 py-2 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100"
+                    >
+                        <Plus className="w-4 h-4 inline mr-1" />
+                        Add Process
+                    </button>
+                    <button className="px-3 py-2 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
+                        View Summary
+                    </button>
+                </div>
+            </div>
+            
+            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sequence No</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Process / Machine Name</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Part Number</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Process</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {processes.map((process) => (
+                            <tr key={process.id} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                    <div className="flex space-x-2">
+                                        <button 
+                                            className="text-gray-400 hover:text-blue-600" 
+                                            title="Edit"
+                                            onClick={() => process.name.includes('machine') ? onShowMachineDetails() : onShowAddMachine()}
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                        </button>
+                                        <button 
+                                            onClick={() => deleteProcess(process.id)} 
+                                            className="text-gray-400 hover:text-red-600" 
+                                            title="Delete"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                        <button className="text-gray-400 hover:text-green-600" title="Add Sub-Process">
+                                            <Plus className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-700">{process.seq}</td>
+                                <td 
+                                    className={`px-4 py-3 whitespace-nowrap text-xs font-medium ${process.name.includes('machine') ? 'pl-8 text-gray-900' : 'text-gray-900'}`}
+                                >
+                                    {process.name}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-700">{process.part}</td>
+                                <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-700">{process.next}</td>
+                                <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-700">{process.desc}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * ActionLogTab Component
+ */
+// ... (ActionLogTab component remains the same) ...
+function ActionLogTab({ actions, onShowCreateTask }) {
+    return (
+        <div className="p-6 space-y-4">
+            <div className="flex justify-between items-center">
+                <button 
+                    onClick={onShowCreateTask}
+                    className="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                >
+                    <Plus className="w-4 h-4 inline mr-1" />
+                    Add Action
+                </button>
+                <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-700">Versions</span>
+                    <select className="form-select text-sm border-gray-300 rounded-md shadow-sm">
+                        <option>1</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task No</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task Name</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Internal Coordinator</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier Coordinator</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Process</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Machine</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TargetDate</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {actions.length === 0 ? (
+                            <tr>
+                                <td colSpan="10" className="px-4 py-4 text-center text-sm text-gray-500">
+                                    No Data Found
+                                </td>
+                            </tr>
+                        ) : (
+                            actions.map((action) => (
+                                <tr key={action.id} className="hover:bg-gray-50">
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                        <div className="flex space-x-2">
+                                            <button className="text-gray-400 hover:text-blue-600" title="Edit">
+                                                <Pencil className="w-4 h-4" />
+                                            </button>
+                                            <button className="text-gray-400 hover:text-red-600" title="Delete">
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-xs text-gray-700">{action.taskNo}</td>
+                                    <td className="px-4 py-3 text-xs text-gray-900">{action.name}</td>
+                                    <td className="px-4 py-3 text-xs text-gray-700">{action.priority}</td>
+                                    <td className="px-4 py-3 text-xs text-gray-700">{action.internal}</td>
+                                    <td className="px-4 py-3 text-xs text-gray-700">{action.supplier}</td>
+                                    <td className="px-4 py-3 text-xs text-gray-700">{action.process}</td>
+                                    <td className="px-4 py-3 text-xs text-gray-700">{action.machine}</td>
+                                    <td className="px-4 py-3 text-xs text-gray-700">{action.dueDate}</td>
+                                    <td className="px-4 py-3 text-xs text-gray-700">
+                                        <span className="px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">{action.status}</span>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * AuthorizationTab Component
+ */
+// ... (AuthorizationTab component remains the same) ...
+function AuthorizationTab({ levels }) {
+    const renderTable = (levelData) => (
+        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+            <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                    <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sign Date</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Signature</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">History</th>
+                    </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                    {levelData.map((row) => (
+                        <tr key={row.id}>
+                            <td className="px-4 py-3 text-xs text-gray-700">{row.id}</td>
+                            <td className="px-4 py-3 text-xs text-gray-700">{row.user}</td>
+                            <td className="px-4 py-3 text-xs text-gray-700">{row.role}</td>
+                            <td className="px-4 py-3 text-xs text-gray-700">
+                                <span className="px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">{row.status}</span>
+                            </td>
+                            <td className="px-4 py-3 text-xs text-gray-700">{row.signDate}</td>
+                            <td className="px-4 py-3 text-xs text-gray-700">{row.signature}</td>
+                            <td className="px-4 py-3 text-xs text-blue-600 cursor-pointer hover:underline">{row.history}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+
+    return (
+        <div className="p-6 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                <select className="form-select w-full border-gray-300 rounded-md shadow-sm">
+                    <option>2 level approval</option>
+                    <option>1 level approval</option>
+                    <option>3 level approval</option>
+                </select>
+                <div className="md:col-span-2 flex justify-end">
+                    <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md shadow-sm hover:bg-blue-700">
+                        Save Authorization Users
+                    </button>
+                </div>
+            </div>
+            
+            <div className="space-y-4">
+                <h3 className="text-base font-semibold text-blue-700">Level 1</h3>
+                {renderTable(levels.level1)}
+            </div>
+            
+            <div className="space-y-4">
+                <h3 className="text-base font-semibold text-blue-700">Level 2</h3>
+                {renderTable(levels.level2)}
+            </div>
+        </div>
+    );
+}
+
+/**
+ * DocumentsTab Component
+ */
+// ... (DocumentsTab component remains the same) ...
+function DocumentsTab({ documents, onShowAttachments, onShowAddAttachment }) {
+    return (
+        <div className="p-6 space-y-4">
+            <h3 className="text-base font-semibold text-blue-700">Documents</h3>
+            <div className="flex justify-between items-center">
+                <div className="relative w-1/3">
+                    <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input 
+                        type="text" 
+                        placeholder="Search..."
+                        className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md shadow-sm"
+                    />
+                </div>
+            </div>
+            
+            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sequence No</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documents</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Is Mandatory</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {documents.map((doc) => (
+                            <tr key={doc.id}>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                    <div className="flex space-x-2">
+                                        <button 
+                                            onClick={() => onShowAttachments(doc)}
+                                            className="text-gray-400 hover:text-blue-600" 
+                                            title="View Attachments"
+                                        >
+                                            <Eye className="w-4 h-4" />
+                                        </button>
+                                        <button 
+                                            onClick={() => onShowAddAttachment(doc)}
+                                            className="text-gray-400 hover:text-green-600" 
+                                            title="Attach File"
+                                        >
+                                            <Paperclip className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </td>
+                                <td className="px-4 py-3 text-xs text-gray-700">{doc.seq}</td>
+                                <td className="px-4 py-3 text-xs font-medium text-gray-900">{doc.name}</td>
+                                <td className="px-4 py-3 text-xs text-gray-700">{doc.description}</td>
+                                <td className="px-4 py-3 text-xs text-gray-700">{doc.mandatory}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * RMRTrackingTab Component
+ */
+// ... (RMRTrackingTab component remains the same) ...
+function RMRTrackingTab({ trackingData, onShowAddTracking }) {
+    return (
+        <div className="p-6 space-y-4">
+            <h3 className="text-base font-semibold text-blue-700">Program Milestones</h3>
+            <div className="p-4 border border-gray-200 rounded-lg space-y-4">
+                {/* Simplified milestone inputs */}
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                    <span className="md:col-span-1"></span>
+                    <span className="text-xs font-medium text-gray-500">MRP(YPA/T3)</span>
+                    <span className="text-xs font-medium text-gray-500">X2(PS/L4)</span>
+                    <span className="text-xs font-medium text-gray-500">LMR(RPA)</span>
+                    <span className="text-xs font-medium text-gray-500">SOP(Job/T5)</span>
+
+                    <label className="text-sm font-medium text-gray-800">MRD Date</label>
+                    <FormInput id="mrd_mpa" type="date" />
+                    <FormInput id="mrd_x2" type="date" />
+                    <FormInput id="mrd_lmr" type="date" />
+                    <FormInput id="mrd_sop" type="date" />
+
+                    <label className="text-sm font-medium text-gray-800">SOP/IS Date</label>
+                    <FormInput id="sop_mpa" type="date" />
+                    <FormInput id="sop_x2" type="date" />
+                    <FormInput id="sop_lmr" type="date" />
+                    <FormInput id="sop_sop" type="date" />
+                </div>
+                 <div className="flex justify-end">
+                    <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md shadow-sm hover:bg-blue-700">
+                        Submit
+                    </button>
+                </div>
+            </div>
+            
+            <div className="flex justify-between items-center">
+                <h3 className="text-base font-semibold text-blue-700">RMR Tracking</h3>
+                <button 
+                    onClick={onShowAddTracking}
+                    className="px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                >
+                    <Plus className="w-4 h-4 inline mr-1" />
+                    Add RMR Tracking
+                </button>
+            </div>
+             <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">RMR Run Date</th>
+                            <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quality trial Parts</th>
+                            <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quality Grand Total Planned</th>
+                            <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actual Rate(JPH)</th>
+                            <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Parts Scrapped</th>
+                            <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Parts Reworked</th>
+                            <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Downtime %</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {trackingData.length === 0 ? (
+                            <tr>
+                                <td colSpan="9" className="px-4 py-4 text-center text-sm text-gray-500">
+                                    No Tracking Data Found
+                                </td>
+                            </tr>
+                        ) : (
+                            trackingData.map((row) => (
+                                <tr key={row.id}>
+                                    <td className="px-2 py-3 whitespace-nowrap">
+                                        <div className="flex space-x-2">
+                                            <button className="text-gray-400 hover:text-blue-600" title="Edit">
+                                                <Pencil className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td className="px-2 py-3 text-xs text-gray-700">{row.runDate}</td>
+                                    <td className="px-2 py-3 text-xs text-gray-700">{row.qualityTrialParts}</td>
+                                    <td className="px-2 py-3 text-xs text-gray-700">{row.qualityGrandTotalPlanned}</td>
+                                    <td className="px-2 py-3 text-xs text-gray-700">{row.actualRate}</td>
+                                    <td className="px-2 py-3 text-xs text-gray-700">{row.partsScrapped}</td>
+                                    <td className="px-2 py-3 text-xs text-gray-700">{row.partsReworked}</td>
+                                    <td className="px-2 py-3 text-xs text-gray-700">{row.downtimePercent}</td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * SupplierWorkScheduleTab Component
+ */
+// ... (SupplierWorkScheduleTab component remains the same) ...
+function SupplierWorkScheduleTab({ shiftData, onShiftChange }) {
+    const [activeSchedule, setActiveSchedule] = useState('regular');
+    
+    const days = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+    const dayLabels = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const shifts = ["shift1", "shift2", "shift3"];
+
+    const data = shiftData[activeSchedule];
+    const totalLabel = activeSchedule === 'regular' ? 'Save Regular Time' : 'Save Maximum Time';
+
+    return (
+        <div className="p-6 space-y-4">
+            <div className="flex justify-between items-center">
+                 <div className="flex space-x-1 border border-gray-300 rounded-md p-0.5">
+                    <button 
+                        onClick={() => setActiveSchedule('regular')}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-md ${activeSchedule === 'regular' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                    >
+                        Regular Opening Time
+                    </button>
+                    <button 
+                        onClick={() => setActiveSchedule('maximum')}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-md ${activeSchedule === 'maximum' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                    >
+                        Maximum Opening Time
+                    </button>
+                </div>
+                <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md shadow-sm hover:bg-blue-700">
+                    <Save className="w-4 h-4 inline mr-1" />
+                    {totalLabel}
+                </button>
+            </div>
+
+            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Shift</th>
+                            {dayLabels.map(day => (
+                                <th key={day} colSpan="2" className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase border-l">{day}</th>
+                            ))}
+                        </tr>
+                        <tr>
+                            <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase"></th>
+                            {dayLabels.map(day => (
+                                <React.Fragment key={day}>
+                                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase border-l">Start - End</th>
+                                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase"></th>
+                                </React.Fragment>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {shifts.map((shift, sIdx) => (
+                            <tr key={shift}>
+                                <td className="px-2 py-3 text-sm font-medium text-gray-800">{`Shift ${sIdx + 1}`}</td>
+                                {days.map(day => (
+                                    <React.Fragment key={day}>
+                                        <td className="px-2 py-3 border-l">
+                                            <input 
+                                                type="text" 
+                                                value={data[shift][day][0]}
+                                                onChange={(e) => onShiftChange(activeSchedule, shift, day, 0, e.target.value)}
+                                                className="w-16 p-1.5 text-xs border border-gray-300 rounded-md" 
+                                                placeholder="00:00"
+                                            />
+                                        </td>
+                                        <td className="px-2 py-3">
+                                            <input 
+                                                type="text" 
+                                                value={data[shift][day][1]}
+                                                onChange={(e) => onShiftChange(activeSchedule, shift, day, 1, e.target.value)}
+                                                className="w-16 p-1.5 text-xs border border-gray-300 rounded-md" 
+                                                placeholder="00:00"
+                                            />
+                                        </td>
+                                    </React.Fragment>
+                                ))}
+                            </tr>
+                        ))}
+                        <tr className="bg-gray-50 font-medium">
+                            <td className="px-2 py-3 text-sm text-gray-800">Total per day (H)</td>
+                            {days.map(day => (
+                                <td key={day} colSpan="2" className="px-2 py-3 text-center text-sm text-gray-800 border-l">
+                                    {data.totals[day]}
+                                </td>
+                            ))}
+                        </tr>
+                    </tbody>
+                    <tfoot className="bg-gray-100">
+                        <tr>
+                            <td colSpan="15" className="px-4 py-3 text-right text-sm font-bold text-gray-800">
+                                Opening Time (per week): {data.weeklyTotal} h/week
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * PlaceholderTab Component
+ */
+// ... (PlaceholderTab component remains the same) ...
+function PlaceholderTab({ name }) {
+    return (
+        <div className="p-10 text-center">
+            <h3 className="text-lg font-medium text-gray-700">{name}</h3>
+            <p className="text-gray-500 mt-2">This content is for demo purposes.</p>
+        </div>
+    );
+}
+
+// --- Modal Components ---
+
+/**
+ * FormInput Component
+ */
+// ... (FormInput component remains the same) ...
+function FormInput({ label, id, required, ...props }) {
+    return (
+        <div>
+            <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+                {label} {required && <span className="text-red-500">*</span>}
+            </label>
+            <input 
+                id={id}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                {...props} 
+            />
+        </div>
+    );
+}
+
+/**
+ * FormTextarea Component
+ */
+// ... (FormTextarea component remains the same) ...
+function FormTextarea({ label, id, required, ...props }) {
+    return (
+        <div>
+            <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+                {label} {required && <span className="text-red-500">*</span>}
+            </label>
+            <textarea 
+                id={id}
+                rows="3"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                {...props} 
+            />
+        </div>
+    );
+}
+
+/**
+ * FormSelect Component
+ */
+// ... (FormSelect component remains the same) ...
+function FormSelect({ label, id, required, children, ...props }) {
+    return (
+        <div>
+            <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+                {label} {required && <span className="text-red-500">*</span>}
+            </label>
+            <select
+                id={id}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                {...props}
+            >
+                {children}
+            </select>
+        </div>
+    );
+}
+
+/**
+ * AddProcessModal Component
+ */
+// ... (AddProcessModal component remains the same) ...
+function AddProcessModal({ onClose, onAddProcess, currentMaxSeq }) {
+    const [seq, setSeq] = useState(currentMaxSeq + 1);
+    const [name, setName] = useState('');
+    const [desc, setDesc] = useState('');
+
+    const handleSubmit = () => {
+        if (!name) return; // Simple validation
+        onAddProcess({ 
+            seq: parseFloat(seq), 
+            name, 
+            desc,
+            part: '001', // Mock data
+            next: 'TBD', // Mock data
+        });
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
+                {/* Header */}
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-lg font-semibold text-gray-800">Add Process</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                {/* Body */}
+                <div className="p-6 space-y-4">
+                    <FormInput 
+                        label="Sequence"
+                        id="sequence"
+                        type="number"
+                        value={seq}
+                        onChange={(e) => setSeq(e.target.value)}
+                        required
+                    />
+                    <FormTextarea 
+                        label="Process name"
+                        id="processName"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Enter process name"
+                        required
+                    />
+                    <FormTextarea 
+                        label="Process description"
+                        id="processDesc"
+                        value={desc}
+                        onChange={(e) => setDesc(e.target.value)}
+                        placeholder="Enter process description"
+                    />
+                </div>
+                {/* Footer */}
+                <div className="flex justify-end space-x-3 p-4 bg-gray-50 border-t rounded-b-lg">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md shadow-sm hover:bg-red-700"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md shadow-sm hover:bg-blue-700"
+                    >
+                        Submit
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * ProcessMappingModal Component
+ */
+// ... (ProcessMappingModal component remains the same) ...
+function ProcessMappingModal({ onClose, processes }) {
+    const [mapping, setMapping] = useState(() => {
+        const initialState = {};
+        processes.forEach((p, index) => {
+            const nextProcess = processes[index + 1];
+            initialState[p.id] = nextProcess ? nextProcess.name : 'Last Process';
+        });
+        return initialState;
+    });
+    
+    const handleMappingChange = (processId, nextProcessName) => {
+        setMapping(prev => ({...prev, [processId]: nextProcessName}));
+    };
+
+    const processOptions = [
+        ...processes.map(p => p.name),
+        'Last Process'
+    ];
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+                {/* Header */}
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-lg font-semibold text-gray-800">Next Process Mapping</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                {/* Body */}
+                <div className="p-6">
+                    <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-100">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Sequence Number</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Process</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Next Process</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {processes.map(p => (
+                                    <tr key={p.id}>
+                                        <td className="px-4 py-3 text-sm text-gray-700">{p.seq}</td>
+                                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.name}</td>
+                                        <td className="px-4 py-3">
+                                            <select 
+                                                value={mapping[p.id]}
+                                                onChange={(e) => handleMappingChange(p.id, e.target.value)}
+                                                className="w-full border-gray-300 rounded-md shadow-sm"
+                                            >
+                                                {processOptions.map(opt => (
+                                                    <option key={opt} value={opt}>{opt}</option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {/* Footer */}
+                <div className="flex justify-end space-x-3 p-4 bg-gray-50 border-t rounded-b-lg">
+                    <button
+                        onClick={onClose} // In a real app, this would save the mapping
+                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md shadow-sm hover:bg-blue-700"
+                    >
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * AddMachineModal Component
+ */
+// ... (AddMachineModal component remains the same) ...
+function AddMachineModal({ onClose }) {
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-start p-4 overflow-y-auto">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl my-12">
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-lg font-semibold text-gray-800">Add Machine to Process</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                    <FormInput label="Sequence" id="machine_seq" type="number" defaultValue="2.1" />
+                    <FormTextarea label="Machine name" id="machine_name" required placeholder="Enter process name" />
+                    <FormTextarea label="Machine description" id="machine_desc" placeholder="Enter process description" />
+                    <FormInput label="Part Number" id="part_number" defaultValue="001" />
+                    <FormInput label="Scrap Value (%)" id="scrap_value" type="number" placeholder="Enter Scrap Value" />
+                    <FormInput label="Machine Brand" id="machine_brand" placeholder="Enter Machine Brand" />
+                    <FormInput label="Machine Type" id="machine_type" placeholder="Enter Machine type" />
+                    <FormInput label="Machine Size" id="machine_size" placeholder="Enter Machine Size" />
+                    <FormInput label="Machine Construction Year" id="machine_year" type="number" placeholder="Enter Construction Year" />
+                </div>
+                <div className="flex justify-end space-x-3 p-4 bg-gray-50 border-t rounded-b-lg">
+                    <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md shadow-sm hover:bg-red-700">
+                        Cancel
+                    </button>
+                    <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md shadow-sm hover:bg-blue-700">
+                        Submit
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * MachineDetailsModal Component
+ */
+// ... (MachineDetailsModal component remains the same) ...
+function MachineDetailsModal({ onClose }) {
+    // Helper to render the calculation rows
+    const CalcRow = ({ num, name, uom, plan, actual, isOutput, isStatus }) => (
+        <div className="grid grid-cols-12 gap-4 items-center">
+            <span className="col-span-1 text-xs text-gray-500">{num}</span>
+            <span className="col-span-4 text-xs font-medium text-gray-800 flex items-center">
+                {name} {isOutput && <span className="ml-2 px-2 py-0.5 text-xs text-white bg-blue-500 rounded-full">Output</span>}
+            </span>
+            <span className="col-span-1 text-xs text-gray-500">{uom}</span>
+            <span className="col-span-3">
+                <input type="text" defaultValue={plan} className={`w-full text-xs p-2 border ${isOutput || isStatus ? 'bg-gray-100' : 'border-gray-300'} rounded-md`} readOnly={isOutput || isStatus} />
+            </span>
+            <span className="col-span-3">
+                <input type="text" defaultValue={actual} className={`w-full text-xs p-2 border ${isOutput || isStatus ? 'bg-gray-100' : 'border-gray-300'} ${isStatus && plan === 'OK' ? 'bg-green-100 border-green-300 text-green-800 font-bold' : ''} rounded-md`} readOnly={isOutput || isStatus} />
+            </span>
+        </div>
+    );
+
+    const CalcSection = ({ title, children }) => (
+        <div className="space-y-3">
+            <h4 className="text-base font-semibold text-blue-600">{title}</h4>
+            <div className="space-y-2 p-4 border border-gray-200 rounded-lg bg-gray-50/50">
+                {children}
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-start p-4 overflow-y-auto">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl my-12">
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-lg font-semibold text-gray-800">Machine Name: Molding machine</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                    <CalcSection title="1. Scrap Details">
+                        <CalcRow num="1.1" name="Planned % Scrap at this process operation" uom="%" plan="4" actual="2.1" />
+                        <CalcRow num="1.2" name="% Scrap per operation" uom="%" plan="4" actual="2.1" isOutput />
+                        <CalcRow num="1.3" name="Sum of all downstream operations scrap rate %" uom="%" plan="13.30528000" actual="7.67" isOutput />
+                    </CalcSection>
+                    
+                    <CalcSection title="2. Capacity Details">
+                        <CalcRow num="2.1" name="Required Parts (Parts/Week)" uom="Pcs" plan="70000" actual="70000" />
+                    </CalcSection>
+
+                    <CalcSection title="3. Supplier Work Schedule">
+                        <CalcRow num="3.1" name="Regular Opening Time" uom="minute" plan="120" actual="120" isOutput />
+                        <CalcRow num="3.2" name="Maximum Opening Time" uom="minute" plan="150" actual="150" isOutput />
+                    </CalcSection>
+                    
+                    <CalcSection title="4. Operating Pattern">
+                        <CalcRow num="4.1" name="Shifts per day" uom="" plan="3" actual="3" />
+                        <CalcRow num="4.2" name="Working hours/shift" uom="Hours" plan="8" actual="8" />
+                        <CalcRow num="4.3" name="Days per week" uom="Days" plan="5" actual="5" />
+                    </CalcSection>
+
+                    <CalcSection title="5. Estimated target">
+                        <CalcRow num="5.1" name="Planned Load Rate" uom="%" plan="90" actual="90" />
+                        <CalcRow num="5.2" name="Cycle Time" uom="Sec" plan="4" actual="4" />
+                        <CalcRow num="5.3" name="Parts/Cycle" uom="Pcs" plan="1" actual="1" />
+                        <CalcRow num="5.4" name="Unplanned Stops" uom="%" plan="1" actual="9.1" />
+                        <CalcRow num="5.5" name="Other Losses" uom="%" plan="2" actual="3" />
+                        <CalcRow num="5.6" name="On - Line Rework" uom="%" plan="2" actual="2.6" />
+                        <CalcRow num="5.7" name="Target Operational Efficiency" uom="%" plan="79.1" actual="84" isOutput />
+                    </CalcSection>
+
+                    <CalcSection title="6. Planned stops Description = Frequency & Duration">
+                        <CalcRow num="6.1" name="Preventive Maintenance Planned Operations" uom="hrs/wk" plan="2" actual="2" />
+                        <CalcRow num="6.2" name="Batch Changes and/or Tool Changes" uom="hrs/wk" plan="4" actual="4" />
+                        <CalcRow num="6.3" name="Workers Breaks & Lunch Start & End of Shift and any other Planned Downtime" uom="hrs/wk" plan="4" actual="4" />
+                        <CalcRow num="6.4" name="Opening Time" uom="hrs/wk" plan="120" actual="120" isOutput />
+                        <CalcRow num="6.5" name="Working Time" uom="hrs/wk" plan="110" actual="110" isOutput />
+                        <CalcRow num="6.6" name="Working Time Rate" uom="%" plan="91.7" actual="91.7" isOutput />
+                    </CalcSection>
+
+                    <CalcSection title="7. Overall Efficiency">
+                        <CalcRow num="7.1" name="Estimated Target" uom="%" plan="72.5" actual="77" isOutput />
+                    </CalcSection>
+
+                    <CalcSection title="8. Capacity Request">
+                        <CalcRow num="8.1" name="Customer Capacity Demand" uom="Pcs/week" plan="70000" actual="70000" isOutput />
+                    </CalcSection>
+
+                    <CalcSection title="9. Estimated Capacity">
+                        <CalcRow num="9.1" name="Estimated Line Speed/UPH" uom="Pcs/Hrs" plan="687.3" actual="623.7" isOutput />
+                        <CalcRow num="9.2" name="Estimated Weekly Capacity" uom="Pcs/week" plan="70470" actual="74844" isOutput />
+                        <CalcRow num="9.3" name="Estimated Daily Capacity" uom="Pcs" plan="14094" actual="14969" isOutput />
+                    </CalcSection>
+
+                    <CalcSection title="10. Conclusion">
+                        <CalcRow num="10.1" name="Estimated Free Line Utilization" uom="%" plan="1" actual="6" isOutput />
+                        <CalcRow num="10.2" name="Extra Opening time available" uom="%" plan="20" actual="20" isOutput />
+                        <CalcRow num="10.3" name="Conclusion" uom="" plan="OK" actual="OK" isOutput isStatus />
+                    </CalcSection>
+                </div>
+                <div className="flex justify-between items-center p-4 bg-gray-50 border-t rounded-b-lg">
+                    <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md shadow-sm hover:bg-blue-700">
+                        Calculate
+                    </button>
+                    <div className="flex space-x-3">
+                        <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md shadow-sm hover:bg-red-700">
+                            Cancel
+                        </button>
+                        <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md shadow-sm hover:bg-blue-700">
+                            Submit
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * OverrideModal Component
+ */
+// ... (OverrideModal component remains the same) ...
+function OverrideModal({ onClose }) {
+    const [action, setAction] = useState('NO');
+    
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-lg font-semibold text-gray-800">Override Final Result Entry</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Final Action <span className="text-red-500">*</span>
+                        </label>
+                        <div className="flex space-x-3">
+                            <button
+                                onClick={() => setAction('YES')}
+                                className={`px-6 py-2 rounded-md font-medium ${
+                                    action === 'YES'
+                                        ? 'bg-blue-600 text-white shadow-md'
+                                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                                }`}
+                            >
+                                YES
+                            </button>
+                            <button
+                                onClick={() => setAction('NO')}
+                                className={`px-6 py-2 rounded-md font-medium ${
+                                    action === 'NO'
+                                        ? 'bg-blue-600 text-white shadow-md'
+                                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                                }`}
+                            >
+                                NO
+                            </button>
+                        </div>
+                    </div>
+                    <FormTextarea 
+                        label="Comments"
+                        id="override_comments"
+                        required
+                        placeholder="Enter comments"
+                    />
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Sign:</label>
+                        {/* Mock Signature Pad */}
+                        <div className="w-full h-32 border border-gray-300 rounded-md bg-gray-50 flex justify-center items-center">
+                            <span className="font-cursive text-3xl text-gray-600 -rotate-6 select-none">Jay</span>
+                        </div>
+                        <div className="flex justify-between items-center mt-1">
+                            <input 
+                                type="text" 
+                                readOnly 
+                                value="Admin User" 
+                                className="w-full text-sm text-gray-700 p-2 border border-gray-300 rounded-md bg-gray-100" 
+                            />
+                            <button className="ml-2 p-2 text-gray-500 hover:text-red-600" title="Clear">
+                                <Eraser className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex justify-end space-x-3 p-4 bg-gray-50 border-t rounded-b-lg">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md shadow-sm hover:bg-red-700"
+                    >
+                        Close
+                    </button>
+                    <button
+                        onClick={onClose} // In a real app, this would submit
+                        className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md shadow-sm hover:bg-green-700"
+                    >
+                        <CheckSquare className="w-4 h-4 inline mr-1" />
+                        Override
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * AssessmentHistoryModal Component
+ */
+// ... (AssessmentHistoryModal component remains the same) ...
+function AssessmentHistoryModal({ onClose }) {
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-start p-4 overflow-y-auto">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-xl my-12">
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-lg font-semibold text-gray-800">Assessment History</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                <div className="p-6 space-y-4">
+                    {/* Mock Timeline Entry */}
+                    <div className="flex">
+                        <div className="flex flex-col items-center mr-4">
+                            <div>
+                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 ring-4 ring-white">
+                                    <Circle className="w-4 h-4 text-blue-600" />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="pb-8">
+                            <p className="text-xs text-gray-500">22 Oct 2025 <span className="ml-2">01:11 PM</span></p>
+                            <span className="px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">
+                                Created
+                            </span>
+                            <p className="text-xs text-gray-500 mt-1">by <span className="font-medium text-gray-800">System</span></p>
+                            <div className="grid grid-cols-2 gap-4 mt-2">
+                                <div>
+                                    <p className="text-xs font-medium text-gray-500">Name:</p>
+                                    <p className="text-sm text-gray-800">Created</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-medium text-gray-500">Final Answer:</p>
+                                    <p className="text-sm text-gray-800">NO</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {/* End Mock Timeline Entry */}
+                </div>
+                <div className="flex justify-end space-x-3 p-4 bg-gray-50 border-t rounded-b-lg">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * CreateTaskModal Component
+ */
+// ... (CreateTaskModal component remains the same) ...
+function CreateTaskModal({ onClose, onCreateTask }) {
+    const [task, setTask] = useState({
+        name: '',
+        description: '',
+        internal: '',
+        supplier: '',
+        process: '',
+        machine: '',
+        dueDate: '',
+        priority: 'Low',
+    });
+
+    const handleChange = (e) => {
+        const { id, value } = e.target;
+        setTask(prev => ({ ...prev, [id]: value }));
+    };
+
+    const handleSubmit = () => {
+        // Simple validation
+        if (!task.name || !task.internal || !task.supplier || !task.dueDate || !task.priority) {
+            // In a real app, show an error message
+            console.log("Validation failed");
+            return;
+        }
+        onCreateTask(task);
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-start p-4 overflow-y-auto">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl my-12">
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-lg font-semibold text-gray-800">Create Task</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                    <FormInput 
+                        label="Name"
+                        id="name"
+                        value={task.name}
+                        onChange={handleChange}
+                        required
+                    />
+                    <FormTextarea 
+                        label="Description"
+                        id="description"
+                        value={task.description}
+                        onChange={handleChange}
+                    />
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Documents</label>
+                        <div className="flex justify-center items-center w-full h-32 border-2 border-dashed border-gray-300 rounded-md">
+                            <div className="text-center">
+                                <UploadCloud className="w-10 h-10 text-gray-400 mx-auto" />
+                                <p className="mt-1 text-sm text-gray-600">Drag and drop files here to upload</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h3 className="text-base font-semibold text-blue-700">Responsible User</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormSelect 
+                            label="Internal" 
+                            id="internal" 
+                            value={task.internal} 
+                            onChange={handleChange} 
+                            required
+                        >
+                            <option value="">Select Internal Coordinator...</option>
+                            <option value="Admin User">Admin User</option>
+                            <option value="Jason Taylor">Jason Taylor</option>
+                        </FormSelect>
+                        <FormSelect 
+                            label="Supplier" 
+                            id="supplier" 
+                            value={task.supplier} 
+                            onChange={handleChange} 
+                            required
+                        >
+                            <option value="">Select Supplier Coordinator...</option>
+                            <option value="Supplier Admin">Supplier Admin</option>
+                            <option value="Supplier Contact">Supplier Contact</option>
+                        </FormSelect>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormSelect 
+                            label="Process" 
+                            id="process" 
+                            value={task.process} 
+                            onChange={handleChange}
+                        >
+                            <option value="">Select Process...</option>
+                            <option value="Process 1">Process 1</option>
+                            <option value="Process 2">Process 2</option>
+                            <option value="Process 3">Process 3</option>
+                            <option value="Process 4">Process 4</option>
+                            <option value="Process 5">Process 5</option>
+                        </FormSelect>
+                        <FormSelect 
+                            label="Machine" 
+                            id="machine" 
+                            value={task.machine} 
+                            onChange={handleChange}
+                        >
+                            <option value="">Select Machine...</option>
+                            <option value="Molding machine">Molding machine</option>
+                            <option value="Turning Machine">Turning Machine</option>
+                            <option value="Milling Machine">Milling Machine</option>
+                            <option value="Painting">Painting</option>
+                            <option value="Final Part">Final Part</option>
+                        </FormSelect>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormInput 
+                            label="Due Date"
+                            id="dueDate"
+                            type="date"
+                            value={task.dueDate}
+                            onChange={handleChange}
+                            required
+                        />
+                        <FormSelect 
+                            label="Priority" 
+                            id="priority" 
+                            value={task.priority} 
+                            onChange={handleChange} 
+                            required
+                        >
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                        </FormSelect>
+                    </div>
+                </div>
+                <div className="flex justify-end space-x-3 p-4 bg-gray-50 border-t rounded-b-lg">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md shadow-sm hover:bg-blue-700"
+                    >
+                        <Save className="w-4 h-4 inline mr-1" />
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * StatusHistoryModal Component
+ */
+// ... (StatusHistoryModal component remains the same) ...
+function StatusHistoryModal({ onClose, history }) {
+    const getStatusColor = (color) => {
+        switch (color) {
+            case 'red': return 'bg-red-100 text-red-800';
+            case 'green': return 'bg-green-100 text-green-800';
+            case 'blue': return 'bg-blue-100 text-blue-800';
+            case 'gray': return 'bg-gray-100 text-gray-800';
+            default: return 'bg-gray-100 text-gray-800';
+        }
+    };
+    
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-start p-4 overflow-y-auto">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl my-12">
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-lg font-semibold text-gray-800">Status History</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                    <div className="flow-root">
+                        <ul className="-mb-8">
+                            {history.map((item, itemIdx) => (
+                                <li key={item.id}>
+                                    <div className="relative pb-8">
+                                        {itemIdx !== history.length - 1 ? (
+                                            <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" />
+                                        ) : null}
+                                        <div className="relative flex space-x-3">
+                                            <div>
+                                                <span className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center ring-4 ring-white">
+                                                    <Circle className="h-4 w-4 text-blue-600" />
+                                                </span>
+                                            </div>
+                                            <div className="min-w-0 flex-1 pt-1.5">
+                                                <p className="text-xs text-gray-500">
+                                                    {item.date} <span className="ml-2">{item.time}</span>
+                                                </p>
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(item.statusColor)}`}>
+                                                    {item.status}
+                                                </span>
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    by <span className="font-medium text-gray-800">{item.by}</span>
+                                                </p>
+                                                <p className="text-sm text-gray-800 mt-2">
+                                                    <span className="font-medium">Comment:</span> {item.comment}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </div>
+                <div className="flex justify-end space-x-3 p-4 bg-gray-50 border-t rounded-b-lg">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * AddTrackingModal Component
+ */
+// ... (AddTrackingModal component remains the same) ...
+function AddTrackingModal({ onClose, onSave }) {
+    const [data, setData] = useState({
+        name: "Week/Run 1",
+        runDate: "",
+        qualityTrialParts: "",
+        qualityPVTestParts: "",
+        qualityBroadcastEDI: "",
+        qualityGrandTotalPlanned: "",
+        qualityGrandTotalActual: "0",
+        durationMinutesPlanned: "",
+        durationMinutesActual: "",
+        plannedRate: "0",
+        actualRate: "0",
+        downtimeMinutes: "",
+        maxPotentialRate: "0",
+        downtimeExplanation: "",
+        operatorsPlanned: "",
+        operatorsActual: "",
+        equipmentPlanned: "",
+        equipmentActual: "",
+        partsScrapped: "",
+        partsReworked: "",
+        ftc: "0",
+        downtimePercent: "0",
+        availability: "0",
+        performance: "0",
+        oee: "0",
+        runResultsRisk: "",
+        comments: ""
+    });
+
+    const handleChange = (e) => {
+        const { id, value } = e.target;
+        setData(prev => ({ ...prev, [id]: value }));
+    };
+
+    const handleSubmit = () => {
+        // In a real app, do validation
+        onSave(data);
+        onClose();
+    };
+    
+    // Helper to create form fields
+    const fields = [
+        { id: "name", label: "Name", required: true },
+        { id: "runDate", label: "Run Date", required: true, type: "date" },
+        { id: "qualityTrialParts", label: "Quality trial Parts", required: true },
+        { id: "qualityPVTestParts", label: "Quality PV test Parts", required: true },
+        { id: "qualityBroadcastEDI", label: "Quality Broadcast(EDI)", required: true },
+        { id: "qualityGrandTotalPlanned", label: "Quality Grand Total Planned", required: true },
+        { id: "qualityGrandTotalActual", label: "Quality Grand Total Actual", required: true, readOnly: true },
+        { id: "durationMinutesPlanned", label: "Duration Minutes Planned", required: true },
+        { id: "durationMinutesActual", label: "Duration Minutes Actual", required: true },
+        { id: "plannedRate", label: "Planned Rate (JPH)", required: true, readOnly: true },
+        { id: "actualRate", label: "Actual Rate(JPH)", required: true, readOnly: true },
+        { id: "downtimeMinutes", label: "Downtime Minutes", required: true },
+        { id: "maxPotentialRate", label: "Max Potential Rate", required: true, readOnly: true },
+        { id: "downtimeExplanation", label: "< 60 min Duration Explanation", required: true },
+        { id: "operatorsPlanned", label: "Number of Operators/Total planned(1 shift)", required: true },
+        { id: "operatorsActual", label: "Number of Operators/Total planned(1 shift) Actual", required: true },
+        { id: "equipmentPlanned", label: "Equipment % Complete–OTOP Planned", required: true },
+        { id: "equipmentActual", label: "Equipment % Complete–OTOP Actual", required: true },
+        { id: "partsScrapped", label: "Parts Scrapped", required: true },
+        { id: "partsReworked", label: "Parts Reworked", required: true },
+        { id: "ftc", label: "FTC", required: true, readOnly: true },
+        { id: "downtimePercent", label: "Downtime %", required: true, readOnly: true },
+        { id: "availability", label: "Availability %", readOnly: true },
+        { id: "performance", label: "Performance %", readOnly: true },
+        { id: "oee", label: "OEE%", readOnly: true },
+    ];
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-start p-4 overflow-y-auto">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl my-12">
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-lg font-semibold text-gray-800">Add Tracking</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                        {fields.map(f => (
+                            <FormInput
+                                key={f.id}
+                                label={f.label}
+                                id={f.id}
+                                type={f.type || "text"}
+                                value={data[f.id]}
+                                onChange={handleChange}
+                                required={f.required}
+                                readOnly={f.readOnly}
+                                className={`w-full px-3 py-2 border ${f.readOnly ? 'bg-gray-100' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
+                            />
+                        ))}
+                        
+                        <FormSelect
+                            label="Run Results Risk"
+                            id="runResultsRisk"
+                            value={data.runResultsRisk}
+                            onChange={handleChange}
+                        >
+                            <option value="">Select Risk...</option>
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                        </FormSelect>
+
+                        <div className="md:col-span-2">
+                            <FormTextarea
+                                label="Comments"
+                                id="comments"
+                                value={data.comments}
+                                onChange={handleChange}
+                                required={true}
+                            />
+                        </div>
+                    </div>
+                </div>
+                <div className="flex justify-end space-x-3 p-4 bg-gray-50 border-t rounded-b-lg">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md shadow-sm hover:bg-blue-700"
+                    >
+                        <Save className="w-4 h-4 inline mr-1" />
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * ViewAttachmentsModal Component
+ */
+// ... (ViewAttachmentsModal component remains the same) ...
+function ViewAttachmentsModal({ onClose, doc }) {
+    const attachments = doc.attachments || [];
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-lg font-semibold text-gray-800">Documents: {doc.name}</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div className="relative">
+                        <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input 
+                            type="text" 
+                            placeholder="Search..."
+                            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md shadow-sm"
+                        />
+                    </div>
+                    <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-[60vh] overflow-y-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50 sticky top-0">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sequence No</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File Names</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {attachments.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="3" className="p-4 text-center text-sm text-gray-500">No records found</td>
+                                    </tr>
+                                ) : (
+                                    attachments.map((file, index) => (
+                                        <tr key={file.id}>
+                                            <td className="px-4 py-3">
+                                                <button className="text-blue-600 hover:text-blue-800" title="Download">
+                                                    <Download className="w-4 h-4" />
+                                                </button>
+                                            </td>
+                                            <td className="px-4 py-3 text-xs text-gray-700">{index + 1}</td>
+                                            <td className="px-4 py-3 text-xs font-medium text-gray-900">{file.name}</td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div className="flex justify-between items-center p-4 bg-gray-50 border-t rounded-b-lg">
+                    <span className="text-xs text-gray-600">Showing {attachments.length} to {attachments.length} of {attachments.length} records</span>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * AddAttachmentsModal Component
+ */
+// ... (AddAttachmentsModal component remains the same) ...
+function AddAttachmentsModal({ onClose, doc }) {
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-lg font-semibold text-gray-800">Attachments: {doc.name}</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                <div className="p-6 space-y-4">
+                     <div className="flex justify-between items-center">
+                        <div className="relative w-1/2">
+                            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                            <input 
+                                type="text" 
+                                placeholder="Search..."
+                                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md shadow-sm"
+                            />
+                        </div>
+                        <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md shadow-sm hover:bg-blue-700">
+                            <Plus className="w-4 h-4 inline mr-1" />
+                            Add Documents
+                        </button>
+                    </div>
+                    <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-[60vh] overflow-y-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50 sticky top-0">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sequence No</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File Names</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td colSpan="2" className="p-4 text-center text-sm text-gray-500">No records found</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div className="flex justify-between items-center p-4 bg-gray-50 border-t rounded-b-lg">
+                    <span className="text-xs text-gray-600">Showing 0 to 0 of 0 records</span>
+                </div>
+            </div>
+        </div>
+    );
+}
 
